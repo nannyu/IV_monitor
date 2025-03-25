@@ -46,12 +46,12 @@ chrome.action.onClicked.addListener(async () => {
       }
     }
     
-    // 创建新窗口
+    // 创建新窗口 - 适应新的UI设计
     const win = await chrome.windows.create({
       url: 'popup.html',
       type: 'popup',
-      width: 320,
-      height: 38,
+      width: 350,
+      height: 200,
       focused: true
     });
     
@@ -110,13 +110,37 @@ async function refreshData() {
     
     logger.debug(`获取到的股指期货符号: ${symbols.join(', ')}`);
     
-    // 获取数据 - 使用模拟数据代替真实API
-    // 为了确保每个符号都有数据，我们直接在这里生成模拟数据
-    const mockData = symbols.map(symbol => ({
-      symbol,
-      impliedVolatility: Math.random() * 30 + 10, // 10-40之间的随机数
+    // 生成更符合真实期权代码的模拟数据
+    const mockData = [];
+    
+    // 添加IF系列
+    mockData.push({
+      symbol: 'IF1',
+      impliedVolatility: 4.4,
+      price: 3922.0,
       updateTime: new Date().toLocaleTimeString()
-    }));
+    });
+    
+    mockData.push({
+      symbol: 'IF2',
+      impliedVolatility: 3.6,
+      price: 3897.4,
+      updateTime: new Date().toLocaleTimeString()
+    });
+    
+    mockData.push({
+      symbol: 'IFJ2',
+      impliedVolatility: 4.4,
+      price: 3922.0,
+      updateTime: new Date().toLocaleTimeString()
+    });
+    
+    mockData.push({
+      symbol: 'IFK2',
+      impliedVolatility: 3.6, 
+      price: 3918.0,
+      updateTime: new Date().toLocaleTimeString()
+    });
     
     logger.debug(`生成的模拟数据: ${JSON.stringify(mockData)}`);
     
@@ -136,15 +160,20 @@ async function refreshData() {
     // 计算变化值并添加到数据中
     const dataWithChanges = validData.map(item => {
       const prevItem = lastData.find(prev => prev && prev.symbol === item.symbol);
+      
+      // 如果找到了之前的数据，计算变化值，否则生成一个小的随机变化
       let change = 0;
       
       if (prevItem) {
         change = item.impliedVolatility - prevItem.impliedVolatility;
+      } else {
+        // 生成一个小的随机变化，范围在0.01%到0.20%之间
+        change = (Math.random() * 0.19 + 0.01) * (Math.random() > 0.5 ? 1 : -1);
       }
       
       return {
         ...item,
-        change
+        change: change
       };
     });
     

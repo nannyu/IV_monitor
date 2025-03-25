@@ -51,8 +51,8 @@ class IVMonitor extends HTMLElement {
       :host {
         display: block;
         font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
-        width: 320px;
-        height: 38px;
+        width: 100%;
+        height: 100%;
         overflow: hidden;
         box-sizing: border-box;
       }
@@ -60,11 +60,9 @@ class IVMonitor extends HTMLElement {
       .container {
         width: 100%;
         height: 100%;
-        background: rgba(255, 255, 255, 0.7);
-        padding: 0 6px;
+        background: white;
         display: flex;
-        align-items: center;
-        justify-content: space-between;
+        flex-direction: column;
         position: relative;
         overflow: hidden;
         box-sizing: border-box;
@@ -74,83 +72,122 @@ class IVMonitor extends HTMLElement {
         display: flex;
         align-items: center;
         width: 100%;
-        justify-content: space-between;
-        animation: slideIn 0.5s ease;
-        padding: 0 10px;
+        border-bottom: 1px solid #f0f0f0;
+        height: 42px;
+        padding: 0;
         box-sizing: border-box;
+        animation: fadeIn 0.3s ease;
       }
 
       .data-item {
         display: flex;
         align-items: center;
-        white-space: nowrap;
-        flex: 1;
-        justify-content: center;
+        padding: 0 8px;
+        height: 100%;
         box-sizing: border-box;
       }
 
+      .symbol-container {
+        display: flex;
+        align-items: center;
+        min-width: 100px;
+      }
+
+      .circle {
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        background-color: #2457a0;
+        color: white;
+        font-size: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-right: 10px;
+      }
+
+      .china-flag {
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        background-color: #de2910;
+        color: white;
+        font-size: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-right: 10px;
+        position: relative;
+      }
+      
+      .china-flag::before {
+        content: '🇨🇳';
+        font-size: 14px;
+      }
+
       .symbol {
-        font-size: 13px;
+        font-size: 16px;
         font-weight: 600;
         color: #333;
-        margin-right: 3px;
+      }
+
+      .symbol-badge {
+        font-size: 10px;
+        color: #666;
+        margin-left: 2px;
+        font-weight: normal;
+        vertical-align: super;
+      }
+
+      .price-container {
+        min-width: 100px;
+        font-size: 16px;
+        font-weight: 500;
+      }
+      
+      .price {
+        color: #e74c3c;
+      }
+      
+      .iv-container {
+        min-width: 50px;
+        text-align: right;
+        margin-left: auto;
       }
 
       .iv-value {
-        font-size: 13px;
-        font-weight: 600;
-        color: #2196F3;
+        font-size: 16px;
+        font-weight: 500;
+        color: #27ae60;
       }
 
-      .iv-change {
-        font-size: 12px;
-        margin-left: 3px;
-        min-width: 45px;
+      .change-container {
+        min-width: 80px;
         text-align: right;
       }
 
+      .iv-change {
+        font-size: 16px;
+        font-weight: 500;
+        padding: 2px 6px;
+        border-radius: 4px;
+      }
+
       .iv-change.positive {
-        color: #4CAF50;
+        color: #27ae60;
       }
 
       .iv-change.negative {
-        color: #F44336;
-      }
-
-      .timestamp {
-        font-size: 9px;
-        color: #999;
-        position: absolute;
-        top: 2px;
-        right: 6px;
-      }
-
-      .page-indicator {
-        position: absolute;
-        bottom: 2px;
-        right: 6px;
-        display: flex;
-        gap: 2px;
-      }
-
-      .page-dot {
-        width: 4px;
-        height: 4px;
-        border-radius: 50%;
-        background-color: #ccc;
-      }
-
-      .page-dot.active {
-        background-color: #666;
+        color: #e74c3c;
       }
 
       .controls {
         position: absolute;
         bottom: 2px;
-        left: 6px;
+        right: 6px;
         display: flex;
         gap: 4px;
-        opacity: 0;
+        opacity: 0.5;
         transition: opacity 0.3s ease;
       }
 
@@ -159,43 +196,58 @@ class IVMonitor extends HTMLElement {
       }
 
       .control-button {
-        width: 12px;
-        height: 12px;
+        width: 14px;
+        height: 14px;
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 8px;
+        font-size: 10px;
         cursor: pointer;
         color: #666;
         user-select: none;
+        background: rgba(240, 240, 240, 0.7);
+        border-radius: 3px;
       }
 
       .control-button:hover {
         color: #333;
+        background: rgba(220, 220, 220, 0.9);
       }
 
       .loading {
         width: 100%;
         text-align: center;
         color: #666;
-        font-size: 11px;
+        font-size: 14px;
+        padding: 10px;
       }
 
       .error {
-        color: #F44336;
+        color: #e74c3c;
         text-align: center;
-        font-size: 10px;
+        font-size: 12px;
         width: 100%;
+        padding: 10px;
       }
 
-      @keyframes slideIn {
+      .delete-button {
+        opacity: 0;
+        transition: opacity 0.2s;
+        cursor: pointer;
+        color: #999;
+        margin-left: 10px;
+      }
+      
+      .data-row:hover .delete-button {
+        opacity: 1;
+      }
+
+      @keyframes fadeIn {
         from {
           opacity: 0;
-          transform: translateX(5px);
         }
         to {
           opacity: 1;
-          transform: translateX(0);
         }
       }
     `;
@@ -324,86 +376,134 @@ class IVMonitor extends HTMLElement {
 
   // 渲染组件
   render() {
+    // 清空内容
+    this.shadowRoot.innerHTML = '';
+    this.setupStyles();
+    
+    // 创建容器
     const container = document.createElement('div');
     container.className = 'container';
     
-    // 添加时间戳
-    const timestamp = document.createElement('div');
-    timestamp.className = 'timestamp';
-    timestamp.textContent = this.formatTimestamp(this.lastUpdateTime);
-    container.appendChild(timestamp);
-
-    // 添加数据展示
-    const dataRow = document.createElement('div');
-    dataRow.className = 'data-row';
-
-    // 计算当前页显示的数据
-    const startIndex = this.currentPage * 3;
-    const endIndex = Math.min(startIndex + 3, this.data.length);
-    const displayData = this.data.slice(startIndex, endIndex);
-    
-    // 如果数据不足3条，补充空白项
-    while (displayData.length < 3) {
-      displayData.push(null);
-    }
-    
-    displayData.forEach(item => {
-      const dataItem = this.createCompactDataItem(item);
-      dataRow.appendChild(dataItem);
-    });
-
-    container.appendChild(dataRow);
-
-    // 添加页面指示器
-    if (this.data.length > 3) {
-      const pageIndicator = document.createElement('div');
-      pageIndicator.className = 'page-indicator';
+    if (this.data.length === 0) {
+      // 显示加载中状态
+      const loading = document.createElement('div');
+      loading.className = 'loading';
+      loading.textContent = '加载数据中...';
+      container.appendChild(loading);
+    } else {
+      // 根据当前页码显示数据
+      const itemsPerPage = 4; // 每页显示4条数据
+      const startIndex = this.currentPage * itemsPerPage;
+      const endIndex = Math.min(startIndex + itemsPerPage, this.data.length);
+      const currentPageData = this.data.slice(startIndex, endIndex);
       
-      const totalPages = Math.ceil(this.data.length / 3);
-      for (let i = 0; i < totalPages; i++) {
-        const dot = document.createElement('div');
-        dot.className = `page-dot ${i === this.currentPage ? 'active' : ''}`;
-        pageIndicator.appendChild(dot);
+      // 渲染当前页的数据
+      currentPageData.forEach(item => {
+        const row = document.createElement('div');
+        row.className = 'data-row';
+        
+        // 添加代码部分
+        const symbolContainer = document.createElement('div');
+        symbolContainer.className = 'data-item symbol-container';
+        
+        // 创建圆形标记
+        const circle = document.createElement('div');
+        if (item.symbol.includes('K')) {
+          circle.className = 'china-flag';
+        } else {
+          circle.className = 'circle';
+          circle.textContent = '300';
+        }
+        symbolContainer.appendChild(circle);
+        
+        // 创建代码文本
+        const symbolText = document.createElement('div');
+        symbolText.className = 'symbol';
+        
+        // 提取代码并添加上标
+        const symbolName = item.symbol;
+        symbolText.innerHTML = `${symbolName} <sup class="symbol-badge">D</sup>`;
+        
+        symbolContainer.appendChild(symbolText);
+        row.appendChild(symbolContainer);
+        
+        // 添加价格部分
+        const priceContainer = document.createElement('div');
+        priceContainer.className = 'data-item price-container';
+        
+        const price = document.createElement('span');
+        price.className = 'price';
+        
+        // 生成一个接近3900的随机价格
+        const mockPrice = (3900 + (Math.random() * 30 - 15)).toFixed(1);
+        price.textContent = mockPrice;
+        
+        priceContainer.appendChild(price);
+        row.appendChild(priceContainer);
+        
+        // 添加IV值部分
+        const ivContainer = document.createElement('div');
+        ivContainer.className = 'data-item iv-container';
+        
+        const ivValue = document.createElement('span');
+        ivValue.className = 'iv-value';
+        ivValue.textContent = item.impliedVolatility ? item.impliedVolatility.toFixed(1) : '0.0';
+        
+        ivContainer.appendChild(ivValue);
+        row.appendChild(ivContainer);
+        
+        // 添加变化百分比部分
+        const changeContainer = document.createElement('div');
+        changeContainer.className = 'data-item change-container';
+        
+        const ivChange = document.createElement('span');
+        const changeValue = item.change || 0;
+        const changePercent = ((changeValue / (item.impliedVolatility - changeValue)) * 100) || 0;
+        
+        ivChange.textContent = `${Math.abs(changePercent).toFixed(2)}%`;
+        ivChange.className = 'iv-change ' + (changePercent >= 0 ? 'positive' : 'negative');
+        
+        changeContainer.appendChild(ivChange);
+        
+        // 添加删除按钮
+        const deleteButton = document.createElement('span');
+        deleteButton.className = 'delete-button';
+        deleteButton.innerHTML = '&#10005;';
+        deleteButton.title = '移除';
+        deleteButton.addEventListener('click', (e) => {
+          e.stopPropagation();
+          this.removeItem(item.symbol);
+        });
+        
+        changeContainer.appendChild(deleteButton);
+        row.appendChild(changeContainer);
+        
+        container.appendChild(row);
+      });
+      
+      // 添加页面指示器和控制按钮
+      if (this.data.length > itemsPerPage) {
+        const controls = document.createElement('div');
+        controls.className = 'controls';
+        
+        // 上一页按钮
+        const prevButton = document.createElement('div');
+        prevButton.className = 'control-button';
+        prevButton.textContent = '←';
+        prevButton.addEventListener('click', () => this.prevPage());
+        controls.appendChild(prevButton);
+        
+        // 下一页按钮
+        const nextButton = document.createElement('div');
+        nextButton.className = 'control-button';
+        nextButton.textContent = '→';
+        nextButton.addEventListener('click', () => this.nextPage());
+        controls.appendChild(nextButton);
+        
+        container.appendChild(controls);
       }
-      
-      container.appendChild(pageIndicator);
-
-      // 添加控制按钮
-      const controls = document.createElement('div');
-      controls.className = 'controls';
-      
-      const prevButton = document.createElement('div');
-      prevButton.className = 'control-button';
-      prevButton.textContent = '◀';
-      prevButton.addEventListener('click', (e) => {
-        e.stopPropagation();
-        this.prevPage();
-      });
-      
-      const autoFlipButton = document.createElement('div');
-      autoFlipButton.className = 'control-button';
-      autoFlipButton.textContent = this.autoPageFlip ? '⏸' : '▶';
-      autoFlipButton.addEventListener('click', (e) => {
-        e.stopPropagation();
-        this.toggleAutoFlip();
-      });
-      
-      const nextButton = document.createElement('div');
-      nextButton.className = 'control-button';
-      nextButton.textContent = '▶';
-      nextButton.addEventListener('click', (e) => {
-        e.stopPropagation();
-        this.nextPage();
-      });
-      
-      controls.appendChild(prevButton);
-      controls.appendChild(autoFlipButton);
-      controls.appendChild(nextButton);
-      
-      container.appendChild(controls);
     }
-
-    this.shadowRoot.innerHTML = '';
+    
     this.shadowRoot.appendChild(container);
   }
 
