@@ -1,1 +1,211 @@
- 
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>期权隐含波动率监控 - 设置</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+      padding: 20px;
+      max-width: 800px;
+      margin: 0 auto;
+      color: #333;
+      background-color: #f9f9f9;
+    }
+    h1 {
+      color: #2196F3;
+      margin-bottom: 30px;
+      border-bottom: 1px solid #e0e0e0;
+      padding-bottom: 10px;
+    }
+    .section {
+      background: white;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      margin-bottom: 20px;
+    }
+    .section-title {
+      font-size: 18px;
+      margin-top: 0;
+      margin-bottom: 15px;
+      color: #444;
+    }
+    label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: 500;
+    }
+    input[type="text"],
+    input[type="number"] {
+      width: 100%;
+      padding: 8px 12px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 14px;
+      margin-bottom: 15px;
+    }
+    .symbols-container {
+      margin-bottom: 15px;
+    }
+    .symbol-item {
+      display: flex;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+    .symbol-item input {
+      flex: 1;
+      margin-right: 10px;
+      margin-bottom: 0;
+    }
+    .symbol-actions {
+      display: flex;
+      margin-bottom: 15px;
+    }
+    #symbol-input {
+      flex: 1;
+      margin-right: 10px;
+      margin-bottom: 0;
+    }
+    .checkbox-group {
+      display: flex;
+      flex-wrap: wrap;
+      margin-bottom: 15px;
+    }
+    .checkbox-item {
+      margin-right: 15px;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+    }
+    .checkbox-item input {
+      margin-right: 5px;
+    }
+    button {
+      padding: 8px 16px;
+      background: #2196F3;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 14px;
+      transition: background 0.2s;
+    }
+    button:hover {
+      background: #1976D2;
+    }
+    button.secondary {
+      background: #f5f5f5;
+      color: #333;
+      border: 1px solid #ddd;
+    }
+    button.secondary:hover {
+      background: #e0e0e0;
+    }
+    button.danger {
+      background: #F44336;
+    }
+    button.danger:hover {
+      background: #D32F2F;
+    }
+    .button-group {
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+      margin-top: 20px;
+    }
+    .status {
+      margin-top: 15px;
+      padding: 10px;
+      border-radius: 4px;
+      font-size: 14px;
+      display: none;
+    }
+    .status.info {
+      background: #E3F2FD;
+      color: #1976D2;
+      display: block;
+    }
+    .status.success {
+      background: #E8F5E9;
+      color: #388E3C;
+      display: block;
+    }
+    .status.error {
+      background: #FFEBEE;
+      color: #D32F2F;
+      display: block;
+    }
+    .predefined-symbols {
+      margin-bottom: 20px;
+    }
+  </style>
+</head>
+<body>
+  <h1>期权隐含波动率监控设置</h1>
+  
+  <div class="section">
+    <h2 class="section-title">监控的股指期货</h2>
+    
+    <div class="predefined-symbols">
+      <p>预设股指期货品种：</p>
+      <div class="checkbox-group" id="predefined-symbols">
+        <div class="checkbox-item">
+          <input type="checkbox" id="symbol-IF" value="IF">
+          <label for="symbol-IF">IF - 沪深300股指期货</label>
+        </div>
+        <div class="checkbox-item">
+          <input type="checkbox" id="symbol-IC" value="IC">
+          <label for="symbol-IC">IC - 中证500股指期货</label>
+        </div>
+        <div class="checkbox-item">
+          <input type="checkbox" id="symbol-IH" value="IH">
+          <label for="symbol-IH">IH - 上证50股指期货</label>
+        </div>
+        <div class="checkbox-item">
+          <input type="checkbox" id="symbol-IM" value="IM">
+          <label for="symbol-IM">IM - 中证1000股指期货</label>
+        </div>
+      </div>
+    </div>
+    
+    <div class="symbols-container">
+      <label>自定义股指期货:</label>
+      <div id="symbols-list">
+        <!-- 自定义期货列表将在这里动态生成 -->
+      </div>
+      
+      <div class="symbol-actions">
+        <input type="text" id="symbol-input" placeholder="输入股指期货代码">
+        <button id="add-symbol">添加</button>
+      </div>
+    </div>
+  </div>
+  
+  <div class="section">
+    <h2 class="section-title">更新设置</h2>
+    
+    <label for="refresh-interval">刷新频率 (秒):</label>
+    <input type="number" id="refresh-interval" min="5" max="3600" value="60">
+    
+    <div>
+      <label>
+        <input type="checkbox" id="notifications-enabled">
+        启用波动率变化通知
+      </label>
+    </div>
+    
+    <label for="volatility-threshold">通知阈值 (%):</label>
+    <input type="number" id="volatility-threshold" min="0.1" max="100" step="0.1" value="5">
+  </div>
+  
+  <div class="button-group">
+    <button id="reset-settings" class="secondary">恢复默认设置</button>
+    <button id="save-settings">保存设置</button>
+  </div>
+  
+  <div id="status" class="status"></div>
+  
+  <script src="options.js"></script>
+</body>
+</html> 

@@ -6,13 +6,14 @@
   "permissions": [
     "storage",
     "alarms",
-    "notifications"
+    "notifications",
+    "windows"
   ],
   "host_permissions": [
     "https://finance.sina.com.cn/*"
   ],
   "action": {
-    "default_popup": "popup.html",
+    "default_title": "期权隐含波动率监控",
     "default_icon": {
       "16": "assets/icons/icon16.png",
       "48": "assets/icons/icon48.png",
@@ -32,8 +33,11 @@
   "options_page": "options.html",
   "web_accessible_resources": [
     {
-      "resources": ["js/*", "styles/*"],
+      "resources": ["js/*", "styles/*", "assets/*"],
       "matches": ["<all_urls>"]
     }
-  ]
+  ],
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self'"
+  }
 } 
