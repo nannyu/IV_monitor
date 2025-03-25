@@ -51,8 +51,10 @@ chrome.action.onClicked.addListener(async () => {
       url: 'popup.html',
       type: 'popup',
       width: 350,
-      height: 200,
-      focused: true
+      height: 210,
+      focused: true,
+      // 添加窗口属性使其始终置顶
+      alwaysOnTop: true
     });
     
     // 保存窗口ID
@@ -275,6 +277,20 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       logger.error('处理UPDATE_CONFIG请求失败', error);
       sendResponse({ success: false, error: error.message });
     });
+    return true;
+  }
+  
+  // 处理关闭窗口请求
+  if (request.type === 'CLOSE_WINDOW') {
+    if (monitorWindowId !== null) {
+      try {
+        chrome.windows.remove(monitorWindowId);
+        monitorWindowId = null;
+        logger.info('窗口已关闭');
+      } catch (error) {
+        logger.error('关闭窗口失败', error);
+      }
+    }
     return true;
   }
 }); 

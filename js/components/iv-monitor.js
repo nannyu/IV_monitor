@@ -241,6 +241,62 @@ class IVMonitor extends HTMLElement {
       .data-row:hover .delete-button {
         opacity: 1;
       }
+      
+      .header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 4px 8px;
+        background-color: #f9f9f9;
+        border-bottom: 1px solid #eaeaea;
+      }
+      
+      .title {
+        font-size: 14px;
+        font-weight: 500;
+        color: #333;
+      }
+      
+      .window-controls {
+        display: flex;
+        gap: 6px;
+      }
+      
+      .close-button {
+        width: 16px;
+        height: 16px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 14px;
+        cursor: pointer;
+        color: #999;
+        border-radius: 50%;
+        transition: all 0.2s;
+      }
+      
+      .close-button:hover {
+        color: #e74c3c;
+        background-color: rgba(231, 76, 60, 0.1);
+      }
+      
+      .refresh-button {
+        width: 16px;
+        height: 16px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 12px;
+        cursor: pointer;
+        color: #999;
+        border-radius: 50%;
+        transition: all 0.2s;
+      }
+      
+      .refresh-button:hover {
+        color: #2980b9;
+        background-color: rgba(41, 128, 185, 0.1);
+      }
 
       @keyframes fadeIn {
         from {
@@ -383,6 +439,50 @@ class IVMonitor extends HTMLElement {
     // 创建容器
     const container = document.createElement('div');
     container.className = 'container';
+    
+    // 添加标题栏
+    const header = document.createElement('div');
+    header.className = 'header';
+    
+    const title = document.createElement('div');
+    title.className = 'title';
+    title.textContent = '期权隐含波动率监控';
+    header.appendChild(title);
+    
+    const windowControls = document.createElement('div');
+    windowControls.className = 'window-controls';
+    
+    const refreshButton = document.createElement('div');
+    refreshButton.className = 'refresh-button';
+    refreshButton.innerHTML = '&#x21bb;'; // 刷新图标
+    refreshButton.title = '刷新数据';
+    refreshButton.addEventListener('click', () => {
+      this.loadData();
+    });
+    windowControls.appendChild(refreshButton);
+    
+    const settingsButton = document.createElement('div');
+    settingsButton.className = 'refresh-button';
+    settingsButton.innerHTML = '&#x2699;'; // 设置图标
+    settingsButton.title = '设置';
+    settingsButton.addEventListener('click', () => {
+      // 打开设置页面
+      chrome.runtime.openOptionsPage();
+    });
+    windowControls.appendChild(settingsButton);
+    
+    const closeButton = document.createElement('div');
+    closeButton.className = 'close-button';
+    closeButton.innerHTML = '&times;'; // 关闭图标
+    closeButton.title = '关闭窗口';
+    closeButton.addEventListener('click', () => {
+      // 通知background.js关闭窗口
+      chrome.runtime.sendMessage({ type: 'CLOSE_WINDOW' });
+    });
+    windowControls.appendChild(closeButton);
+    
+    header.appendChild(windowControls);
+    container.appendChild(header);
     
     if (this.data.length === 0) {
       // 显示加载中状态
