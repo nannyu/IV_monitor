@@ -107,47 +107,31 @@ async function refreshData() {
     logger.debug('开始刷新数据');
     
     // 获取配置
-    const config = await chrome.storage.local.get(['symbols', 'notifications']);
+    const config = await chrome.storage.local.get(['symbols', 'notifications', 'useRealData']);
     const symbols = config.symbols || ['IF', 'IC', 'IH'];
+    const useRealData = config.useRealData || false; // 是否使用真实API数据
     
-    logger.debug(`获取到的股指期货符号: ${symbols.join(', ')}`);
+    logger.debug(`获取到的股指期货符号: ${symbols.join(', ')}, 使用真实数据: ${useRealData}`);
     
-    // 生成更符合真实期权代码的模拟数据
-    const mockData = [];
+    let currentData;
     
-    // 添加IF系列
-    mockData.push({
-      symbol: 'IF1',
-      impliedVolatility: 4.4,
-      price: 3922.0,
-      updateTime: new Date().toLocaleTimeString()
-    });
-    
-    mockData.push({
-      symbol: 'IF2',
-      impliedVolatility: 3.6,
-      price: 3897.4,
-      updateTime: new Date().toLocaleTimeString()
-    });
-    
-    mockData.push({
-      symbol: 'IFJ2',
-      impliedVolatility: 4.4,
-      price: 3922.0,
-      updateTime: new Date().toLocaleTimeString()
-    });
-    
-    mockData.push({
-      symbol: 'IFK2',
-      impliedVolatility: 3.6, 
-      price: 3918.0,
-      updateTime: new Date().toLocaleTimeString()
-    });
-    
-    logger.debug(`生成的模拟数据: ${JSON.stringify(mockData)}`);
+    // 如果启用了真实数据，则通过API获取
+    if (useRealData) {
+      try {
+        currentData = await dataService.fetchOptionData(symbols, true);
+        logger.info('已成功获取真实API数据');
+      } catch (apiError) {
+        logger.error('获取真实API数据失败，将使用模拟数据', apiError);
+        // 失败后回退到模拟数据
+        currentData = await generateMockData(symbols);
+      }
+    } else {
+      // 使用模拟数据
+      currentData = await generateMockData(symbols);
+    }
     
     // 验证数据
-    const validData = mockData.filter(item => {
+    const validData = currentData.filter(item => {
       return item.symbol && typeof item.impliedVolatility === 'number';
     });
     
@@ -155,7 +139,7 @@ async function refreshData() {
       throw new Error('没有有效数据');
     }
     
-    // 获取上次数据用于比较
+    // 获取上次数据
     const previousData = await chrome.storage.local.get(['lastData']);
     const lastData = previousData.lastData || [];
     
@@ -196,6 +180,61 @@ async function refreshData() {
     logger.info('数据刷新完成');
   } catch (error) {
     logger.error('刷新数据失败', error);
+  }
+}
+
+// 生成模拟数据
+async function generateMockData(symbols) {
+  try {
+    // 获取上次数据用于计算微小变化
+    const previousData = await chrome.storage.local.get(['lastData']);
+    const lastData = previousData.lastData || [];
+    
+    const mockData = [];
+    
+    const generateIV = (symbol) => {
+      // 查找上次数据
+      const prevItem = lastData.find(item => item && item.symbol === symbol);
+      
+      if (prevItem) {
+        // 在上次数据基础上增加随机小波动 (-0.2 到 +0.2)
+        const randomChange = (Math.random() * 0.4 - 0.2);
+        return Math.max(0.1, prevItem.impliedVolatility + randomChange);
+      } else {
+        // 首次生成IV数据
+        return symbol.includes('F') ? 4.4 : 3.6; 
+      }
+    };
+    
+    const generatePrice = (symbol) => {
+      // 查找上次数据
+      const prevItem = lastData.find(item => item && item.symbol === symbol);
+      
+      if (prevItem && prevItem.price) {
+        // 在上次价格基础上增加随机小波动 (-2 到 +2)
+        const randomChange = (Math.random() * 4 - 2);
+        return Math.max(3800, prevItem.price + randomChange);
+      } else {
+        // 首次生成价格数据，接近3900
+        return 3900 + (Math.random() * 30 - 15);
+      }
+    };
+    
+    // 为每个符号生成模拟数据
+    for (const symbol of symbols) {
+      mockData.push({
+        symbol,
+        impliedVolatility: generateIV(symbol),
+        price: generatePrice(symbol),
+        updateTime: new Date().toLocaleTimeString()
+      });
+    }
+    
+    logger.debug(`生成的模拟数据: ${JSON.stringify(mockData)}`);
+    return mockData;
+  } catch (error) {
+    logger.error('生成模拟数据失败', error);
+    throw error;
   }
 }
 

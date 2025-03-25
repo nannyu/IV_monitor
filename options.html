@@ -139,6 +139,32 @@
     .predefined-symbols {
       margin-bottom: 20px;
     }
+    
+    /* 透明度滑块样式 */
+    .range-container {
+      display: flex;
+      align-items: center;
+      margin-bottom: 15px;
+    }
+    #transparency-slider {
+      flex: 1;
+      margin-right: 10px;
+    }
+    #transparency-value {
+      min-width: 40px;
+      text-align: right;
+    }
+    .preview-box {
+      height: 60px;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 500;
+      margin-bottom: 15px;
+      border: 1px solid #ddd;
+      background-color: rgba(255, 255, 255, 0.85);
+    }
   </style>
 </head>
 <body>
@@ -197,6 +223,30 @@
     
     <label for="volatility-threshold">通知阈值 (%):</label>
     <input type="number" id="volatility-threshold" min="0.1" max="100" step="0.1" value="5">
+  </div>
+  
+  <div class="section">
+    <h2 class="section-title">界面设置</h2>
+    
+    <label for="transparency-slider">背景透明度:</label>
+    <div class="range-container">
+      <input type="range" id="transparency-slider" min="30" max="100" step="5" value="85">
+      <span id="transparency-value">85%</span>
+    </div>
+    <div class="preview-box" id="transparency-preview">
+      <span>透明度预览</span>
+    </div>
+  </div>
+  
+  <div class="section">
+    <h3>数据源设置</h3>
+    <div class="option-group">
+      <div class="checkbox-container">
+        <input type="checkbox" id="use-real-data" name="use-real-data"> 
+        <label for="use-real-data">使用真实API数据（需要启动代理服务器）</label>
+      </div>
+      <p class="description">启用后将通过代理服务器获取真实的期权隐含波动率数据，未启用时使用模拟数据。</p>
+    </div>
   </div>
   
   <div class="button-group">

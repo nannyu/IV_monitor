@@ -30,3 +30,5 @@ Thumbs.db
 # 缓存
 .cache/
 .npm/ 
+# Private individual user cursor rules
+.cursor/rules/_*.mdc

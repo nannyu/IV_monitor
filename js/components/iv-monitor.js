@@ -7,20 +7,40 @@ class IVMonitor extends HTMLElement {
     this.data = [];
     this.config = {
       symbols: ['IF', 'IC', 'IH'],
-      refreshInterval: 60
+      refreshInterval: 60,
+      transparency: 85 // 默认透明度
     };
     this.lastUpdateTime = new Date();
     this.currentPage = 0;
     this.autoPageFlip = true;
     this.pageFlipInterval = null;
+    this.status = 'loaded';
+    this.errorMessage = '';
   }
 
-  connectedCallback() {
-    this.init();
-    this.setupStyles();
-    this.setupEventListeners();
-    this.startDataRefresh();
-    this.startPageFlip();
+  async connectedCallback() {
+    try {
+      // 获取配置，包括透明度设置
+      const result = await chrome.storage.local.get(['symbols', 'refreshInterval', 'transparency']);
+      this.config = { ...this.config, ...result };
+      
+      // 初始化组件
+      await this.init();
+      
+      // 应用透明度设置
+      if (this.config.transparency) {
+        this.applyTransparency(this.config.transparency);
+      }
+      
+      // 监听透明度设置变化
+      chrome.storage.onChanged.addListener((changes, area) => {
+        if (area === 'local' && changes.transparency) {
+          this.applyTransparency(changes.transparency.newValue);
+        }
+      });
+    } catch (error) {
+      logger.error('组件初始化失败', error);
+    }
   }
 
   disconnectedCallback() {
@@ -31,16 +51,37 @@ class IVMonitor extends HTMLElement {
   // 初始化组件
   async init() {
     try {
-      // 获取配置
-      const result = await chrome.storage.local.get(['symbols', 'refreshInterval']);
-      this.config = { ...this.config, ...result };
-      
       // 初始加载数据
-      await this.loadData();
+      await this.refreshData();
+      
+      // 设置样式和事件
+      this.setupStyles();
+      this.setupEventListeners();
+      this.startDataRefresh();
+      this.startPageFlip();
       
       logger.info('IV监控组件初始化完成');
     } catch (error) {
       logger.error('IV监控组件初始化失败', error);
+    }
+  }
+  
+  // 应用透明度设置
+  applyTransparency(transparency) {
+    try {
+      const opacity = transparency / 100;
+      const container = this.shadowRoot.querySelector('.container');
+      if (container) {
+        container.style.backgroundColor = `rgba(255, 255, 255, ${opacity})`;
+        
+        // 调整标题栏透明度
+        const header = this.shadowRoot.querySelector('.header');
+        if (header) {
+          header.style.backgroundColor = `rgba(249, 249, 249, ${Math.min(opacity + 0.05, 1)})`;
+        }
+      }
+    } catch (error) {
+      logger.error('应用透明度失败', error);
     }
   }
 
@@ -60,7 +101,7 @@ class IVMonitor extends HTMLElement {
       .container {
         width: 100%;
         height: 100%;
-        background: white;
+        background: rgba(255, 255, 255, 0.85); /* 半透明背景 */
         display: flex;
         flex-direction: column;
         position: relative;
@@ -72,7 +113,7 @@ class IVMonitor extends HTMLElement {
         display: flex;
         align-items: center;
         width: 100%;
-        border-bottom: 1px solid #f0f0f0;
+        border-bottom: 1px solid rgba(240, 240, 240, 0.7);
         height: 42px;
         padding: 0;
         box-sizing: border-box;
@@ -247,8 +288,8 @@ class IVMonitor extends HTMLElement {
         align-items: center;
         justify-content: space-between;
         padding: 4px 8px;
-        background-color: #f9f9f9;
-        border-bottom: 1px solid #eaeaea;
+        background-color: rgba(249, 249, 249, 0.9);
+        border-bottom: 1px solid rgba(234, 234, 234, 0.7);
       }
       
       .title {
@@ -381,36 +422,130 @@ class IVMonitor extends HTMLElement {
 
   // 开始定时刷新
   startDataRefresh() {
+    // 清除可能存在的定时器
+    this.stopDataRefresh();
+    
+    // 初始设置更新间隔
+    const updateInterval = Math.max(5, Math.min(this.config.refreshInterval, 60)); // 范围5-60秒
+    
+    // 立即刷新一次
+    this.refreshData();
+    
+    // 设置快速小刷新 (每1秒微调值)
+    this.microRefreshInterval = setInterval(() => {
+      this.microRefreshData();
+    }, 1000);
+    
+    // 设置完整刷新 (根据配置间隔)
     this.refreshInterval = setInterval(() => {
-      this.loadData();
-    }, this.config.refreshInterval * 1000);
+      this.refreshData();
+    }, updateInterval * 1000);
   }
 
   // 停止定时刷新
   stopDataRefresh() {
     if (this.refreshInterval) {
       clearInterval(this.refreshInterval);
+      this.refreshInterval = null;
+    }
+    
+    if (this.microRefreshInterval) {
+      clearInterval(this.microRefreshInterval);
+      this.microRefreshInterval = null;
     }
   }
-
-  // 加载数据
-  async loadData() {
+  
+  // 计算变化百分比
+  calculateChangePercent(change, impliedVolatility) {
+    if (!impliedVolatility || impliedVolatility === 0) return 0;
     try {
-      this.showLoading();
-      
-      // 发送消息给background script获取数据
-      const response = await chrome.runtime.sendMessage({ type: 'GET_IV_DATA' });
-      
-      if (!response.success) {
-        throw new Error(response.error);
-      }
-      
-      this.lastUpdateTime = new Date();
-      logger.debug('数据加载成功');
-    } catch (error) {
-      logger.error('加载数据失败', error);
-      this.showError('加载失败');
+      // 使用安全的计算方法
+      return ((change / (impliedVolatility - change)) * 100) || 0;
+    } catch (e) {
+      return 0;
     }
+  }
+  
+  // 微刷新数据 - 只进行微小变动
+  microRefreshData() {
+    if (!this.data || this.data.length === 0) return;
+    
+    // 对每个数据项进行微小调整，不向服务器请求
+    const updatedData = this.data.map(item => {
+      // 生成±0.05之间的微小随机变动
+      const microChange = (Math.random() * 0.1 - 0.05);
+      const newIV = Math.max(0.1, item.impliedVolatility + microChange);
+      
+      // 价格微小变动±0.5
+      const priceChange = (Math.random() * 1 - 0.5);
+      const newPrice = Math.max(3800, (item.price || 3900) + priceChange);
+      
+      return {
+        ...item,
+        impliedVolatility: newIV,
+        price: newPrice,
+        change: microChange // 这个周期的微小变化
+      };
+    });
+    
+    // 更新数据并重新渲染
+    this.data = updatedData;
+    this.render();
+    
+    logger.debug('数据微刷新完成');
+  }
+  
+  // 加载数据 - 完整刷新，从后台获取数据
+  async refreshData() {
+    try {
+      this.status = 'loading';
+      this.render();
+
+      // 获取配置
+      const result = await chrome.storage.local.get(['useRealData']);
+      const useRealData = result.useRealData || false;
+
+      // 请求数据更新
+      chrome.runtime.sendMessage({ type: 'GET_IV_DATA' });
+
+      // 从后台获取当前数据
+      const storage = await chrome.storage.local.get(['lastData']);
+      const data = storage.lastData || [];
+
+      // 如果数据为空，显示错误
+      if (!data || data.length === 0) {
+        this.status = 'error';
+        this.errorMessage = '未找到数据';
+        this.render();
+        logger.error('未找到期权数据');
+        return;
+      }
+
+      // 更新数据
+      this.data = data;
+      this.status = 'loaded';
+      this.lastUpdateTime = new Date();
+      
+      // 标记数据来源
+      this.dataSource = useRealData ? '真实数据' : '模拟数据';
+
+      // 渲染数据
+      this.render();
+      logger.info('数据刷新成功');
+    } catch (error) {
+      this.status = 'error';
+      this.errorMessage = error.message;
+      logger.error('刷新数据失败', error);
+      this.render();
+    }
+  }
+  
+  // 移除项目
+  removeItem(symbol) {
+    // 从数据中移除指定符号的项
+    this.data = this.data.filter(item => item.symbol !== symbol);
+    // 重新渲染界面
+    this.render();
   }
 
   // 更新数据
@@ -484,123 +619,134 @@ class IVMonitor extends HTMLElement {
     header.appendChild(windowControls);
     container.appendChild(header);
     
-    if (this.data.length === 0) {
+    if (this.status === 'loading') {
       // 显示加载中状态
       const loading = document.createElement('div');
       loading.className = 'loading';
       loading.textContent = '加载数据中...';
       container.appendChild(loading);
+    } else if (this.status === 'error') {
+      // 显示错误信息
+      const error = document.createElement('div');
+      error.className = 'error';
+      error.textContent = this.errorMessage || '加载失败';
+      container.appendChild(error);
     } else {
-      // 根据当前页码显示数据
-      const itemsPerPage = 4; // 每页显示4条数据
-      const startIndex = this.currentPage * itemsPerPage;
-      const endIndex = Math.min(startIndex + itemsPerPage, this.data.length);
-      const currentPageData = this.data.slice(startIndex, endIndex);
-      
-      // 渲染当前页的数据
-      currentPageData.forEach(item => {
-        const row = document.createElement('div');
-        row.className = 'data-row';
+      // 没有数据时显示提示信息
+      if (!this.data || this.data.length === 0) {
+        const noData = document.createElement('div');
+        noData.className = 'no-data';
+        noData.textContent = '暂无数据';
+        container.appendChild(noData);
+      } else {
+        // 根据当前页码显示数据
+        const itemsPerPage = 4; // 每页显示4条数据
+        const startIndex = this.currentPage * itemsPerPage;
+        const endIndex = Math.min(startIndex + itemsPerPage, this.data.length);
+        const currentPageData = this.data.slice(startIndex, endIndex);
         
-        // 添加代码部分
-        const symbolContainer = document.createElement('div');
-        symbolContainer.className = 'data-item symbol-container';
-        
-        // 创建圆形标记
-        const circle = document.createElement('div');
-        if (item.symbol.includes('K')) {
-          circle.className = 'china-flag';
-        } else {
-          circle.className = 'circle';
-          circle.textContent = '300';
-        }
-        symbolContainer.appendChild(circle);
-        
-        // 创建代码文本
-        const symbolText = document.createElement('div');
-        symbolText.className = 'symbol';
-        
-        // 提取代码并添加上标
-        const symbolName = item.symbol;
-        symbolText.innerHTML = `${symbolName} <sup class="symbol-badge">D</sup>`;
-        
-        symbolContainer.appendChild(symbolText);
-        row.appendChild(symbolContainer);
-        
-        // 添加价格部分
-        const priceContainer = document.createElement('div');
-        priceContainer.className = 'data-item price-container';
-        
-        const price = document.createElement('span');
-        price.className = 'price';
-        
-        // 生成一个接近3900的随机价格
-        const mockPrice = (3900 + (Math.random() * 30 - 15)).toFixed(1);
-        price.textContent = mockPrice;
-        
-        priceContainer.appendChild(price);
-        row.appendChild(priceContainer);
-        
-        // 添加IV值部分
-        const ivContainer = document.createElement('div');
-        ivContainer.className = 'data-item iv-container';
-        
-        const ivValue = document.createElement('span');
-        ivValue.className = 'iv-value';
-        ivValue.textContent = item.impliedVolatility ? item.impliedVolatility.toFixed(1) : '0.0';
-        
-        ivContainer.appendChild(ivValue);
-        row.appendChild(ivContainer);
-        
-        // 添加变化百分比部分
-        const changeContainer = document.createElement('div');
-        changeContainer.className = 'data-item change-container';
-        
-        const ivChange = document.createElement('span');
-        const changeValue = item.change || 0;
-        const changePercent = ((changeValue / (item.impliedVolatility - changeValue)) * 100) || 0;
-        
-        ivChange.textContent = `${Math.abs(changePercent).toFixed(2)}%`;
-        ivChange.className = 'iv-change ' + (changePercent >= 0 ? 'positive' : 'negative');
-        
-        changeContainer.appendChild(ivChange);
-        
-        // 添加删除按钮
-        const deleteButton = document.createElement('span');
-        deleteButton.className = 'delete-button';
-        deleteButton.innerHTML = '&#10005;';
-        deleteButton.title = '移除';
-        deleteButton.addEventListener('click', (e) => {
-          e.stopPropagation();
-          this.removeItem(item.symbol);
+        // 渲染当前页的数据
+        currentPageData.forEach(item => {
+          const row = document.createElement('div');
+          row.className = 'data-row';
+          
+          // 添加代码部分
+          const symbolContainer = document.createElement('div');
+          symbolContainer.className = 'data-item symbol-container';
+          
+          // 创建圆形标记
+          const circle = document.createElement('div');
+          if (item.symbol.includes('K')) {
+            circle.className = 'china-flag';
+          } else {
+            circle.className = 'circle';
+            circle.textContent = '300';
+          }
+          symbolContainer.appendChild(circle);
+          
+          // 创建代码文本
+          const symbolText = document.createElement('div');
+          symbolText.className = 'symbol';
+          
+          // 提取代码并添加上标
+          const symbolName = item.symbol;
+          symbolText.innerHTML = `${symbolName} <sup class="symbol-badge">D</sup>`;
+          
+          symbolContainer.appendChild(symbolText);
+          row.appendChild(symbolContainer);
+          
+          // 添加价格部分
+          const priceContainer = document.createElement('div');
+          priceContainer.className = 'data-item price-container';
+          
+          const price = document.createElement('span');
+          price.className = 'price';
+          price.textContent = item.price ? item.price.toFixed(1) : '0.0';
+          
+          priceContainer.appendChild(price);
+          row.appendChild(priceContainer);
+          
+          // 添加IV值部分
+          const ivContainer = document.createElement('div');
+          ivContainer.className = 'data-item iv-container';
+          
+          const ivValue = document.createElement('span');
+          ivValue.className = 'iv-value';
+          ivValue.textContent = item.impliedVolatility ? item.impliedVolatility.toFixed(1) : '0.0';
+          
+          ivContainer.appendChild(ivValue);
+          row.appendChild(ivContainer);
+          
+          // 添加变化百分比部分
+          const changeContainer = document.createElement('div');
+          changeContainer.className = 'data-item change-container';
+          
+          const ivChange = document.createElement('span');
+          const changeValue = item.change || 0;
+          const changePercent = this.calculateChangePercent(changeValue, item.impliedVolatility);
+          
+          ivChange.textContent = `${Math.abs(changePercent).toFixed(2)}%`;
+          ivChange.className = 'iv-change ' + (changePercent >= 0 ? 'positive' : 'negative');
+          
+          changeContainer.appendChild(ivChange);
+          
+          // 添加删除按钮
+          const deleteButton = document.createElement('span');
+          deleteButton.className = 'delete-button';
+          deleteButton.innerHTML = '&#10005;';
+          deleteButton.title = '移除';
+          deleteButton.addEventListener('click', (e) => {
+            e.stopPropagation();
+            this.removeItem(item.symbol);
+          });
+          
+          changeContainer.appendChild(deleteButton);
+          row.appendChild(changeContainer);
+          
+          container.appendChild(row);
         });
         
-        changeContainer.appendChild(deleteButton);
-        row.appendChild(changeContainer);
-        
-        container.appendChild(row);
-      });
-      
-      // 添加页面指示器和控制按钮
-      if (this.data.length > itemsPerPage) {
-        const controls = document.createElement('div');
-        controls.className = 'controls';
-        
-        // 上一页按钮
-        const prevButton = document.createElement('div');
-        prevButton.className = 'control-button';
-        prevButton.textContent = '←';
-        prevButton.addEventListener('click', () => this.prevPage());
-        controls.appendChild(prevButton);
-        
-        // 下一页按钮
-        const nextButton = document.createElement('div');
-        nextButton.className = 'control-button';
-        nextButton.textContent = '→';
-        nextButton.addEventListener('click', () => this.nextPage());
-        controls.appendChild(nextButton);
-        
-        container.appendChild(controls);
+        // 添加页面指示器和控制按钮
+        if (this.data.length > itemsPerPage) {
+          const controls = document.createElement('div');
+          controls.className = 'controls';
+          
+          // 上一页按钮
+          const prevButton = document.createElement('div');
+          prevButton.className = 'control-button';
+          prevButton.textContent = '←';
+          prevButton.addEventListener('click', () => this.prevPage());
+          controls.appendChild(prevButton);
+          
+          // 下一页按钮
+          const nextButton = document.createElement('div');
+          nextButton.className = 'control-button';
+          nextButton.textContent = '→';
+          nextButton.addEventListener('click', () => this.nextPage());
+          controls.appendChild(nextButton);
+          
+          container.appendChild(controls);
+        }
       }
     }
     

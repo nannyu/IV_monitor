@@ -7,7 +7,9 @@ const defaultConfig = {
   notifications: {
     enabled: true,
     threshold: 5
-  }
+  },
+  transparency: 85,
+  useRealData: false // 默认不使用真实数据
 };
 
 // 预设股指期货代码
@@ -17,7 +19,7 @@ const predefinedSymbols = ['IF', 'IC', 'IH', 'IM'];
 async function initPage() {
   try {
     // 获取当前配置
-    const result = await chrome.storage.local.get(['symbols', 'refreshInterval', 'notifications']);
+    const result = await chrome.storage.local.get(['symbols', 'refreshInterval', 'notifications', 'transparency', 'useRealData']);
     const config = { ...defaultConfig, ...result };
     
     // 更新UI
@@ -47,6 +49,16 @@ function updateUI(config) {
   // 更新通知设置
   document.getElementById('notifications-enabled').checked = config.notifications.enabled;
   document.getElementById('volatility-threshold').value = config.notifications.threshold;
+  
+  // 更新透明度设置
+  const transparency = config.transparency || defaultConfig.transparency;
+  const transparencySlider = document.getElementById('transparency-slider');
+  transparencySlider.value = transparency;
+  document.getElementById('transparency-value').textContent = `${transparency}%`;
+  document.getElementById('transparency-preview').style.backgroundColor = `rgba(255, 255, 255, ${transparency / 100})`;
+  
+  // 设置真实数据选项
+  document.getElementById('use-real-data').checked = config.useRealData || false;
 }
 
 // 更新预设品种选择
@@ -103,6 +115,14 @@ function setupEventListeners() {
   
   // 重置设置
   document.getElementById('reset-settings').addEventListener('click', resetSettings);
+  
+  // 透明度滑块事件
+  const transparencySlider = document.getElementById('transparency-slider');
+  transparencySlider.addEventListener('input', function() {
+    const value = this.value;
+    document.getElementById('transparency-value').textContent = `${value}%`;
+    document.getElementById('transparency-preview').style.backgroundColor = `rgba(255, 255, 255, ${value / 100})`;
+  });
   
   // 为预设品种复选框添加事件监听
   predefinedSymbols.forEach(symbol => {
@@ -222,6 +242,10 @@ async function saveSettings() {
     const refreshInterval = parseInt(document.getElementById('refresh-interval').value);
     const notificationsEnabled = document.getElementById('notifications-enabled').checked;
     const volatilityThreshold = parseFloat(document.getElementById('volatility-threshold').value);
+    const transparency = parseInt(document.getElementById('transparency-slider').value);
+    
+    // 获取真实数据设置
+    const useRealData = document.getElementById('use-real-data').checked;
     
     // 验证刷新频率
     if (refreshInterval < 5 || refreshInterval > 3600) {
@@ -242,7 +266,9 @@ async function saveSettings() {
       notifications: {
         enabled: notificationsEnabled,
         threshold: volatilityThreshold
-      }
+      },
+      transparency,
+      useRealData
     };
     
     await chrome.storage.local.set(config);
