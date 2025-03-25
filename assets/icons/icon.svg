@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+  <!-- 背景圆形 -->
+  <circle cx="64" cy="64" r="60" fill="#2196F3"/>
+  
+  <!-- 波动率图表 -->
+  <path d="M20 80 L40 60 L60 70 L80 40 L100 50 L108 40" 
+        stroke="white" 
+        stroke-width="8" 
+        fill="none" 
+        stroke-linecap="round"/>
+  
+  <!-- 百分比符号 -->
+  <text x="64" 
+        y="64" 
+        font-family="Arial" 
+        font-size="40" 
+        fill="white" 
+        text-anchor="middle" 
+        dominant-baseline="middle">%</text>
+</svg> 
